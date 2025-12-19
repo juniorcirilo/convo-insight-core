@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, ShieldCheck, UserCog, Users, Ban, CheckCircle, Clock } from "lucide-react";
+import { MoreVertical, ShieldCheck, UserCog, Users, Ban, CheckCircle, Clock, KeyRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { TeamMember, useTeamManagement } from "@/hooks/useTeamManagement";
 import { ChangeRoleDialog } from "./ChangeRoleDialog";
 import { DeactivateMemberDialog } from "./DeactivateMemberDialog";
+import { ResetPasswordModal } from "./ResetPasswordModal";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -37,7 +40,9 @@ const statusConfig = {
 export const TeamMemberRow = ({ member }: TeamMemberRowProps) => {
   const [showChangeRoleDialog, setShowChangeRoleDialog] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const { approveUser, isApprovingUser } = useTeamManagement();
+  const { isAdmin, user } = useAuth();
 
   const handleApprove = async () => {
     try {
@@ -57,6 +62,9 @@ export const TeamMemberRow = ({ member }: TeamMemberRowProps) => {
     .join('')
     .toUpperCase()
     .slice(0, 2);
+
+  // Don't show reset password for the current user
+  const canResetPassword = isAdmin && user?.id !== member.id;
 
   return (
     <>
@@ -138,6 +146,16 @@ export const TeamMemberRow = ({ member }: TeamMemberRowProps) => {
                   <UserCog className="mr-2 h-4 w-4" />
                   Alterar Role
                 </DropdownMenuItem>
+                {canResetPassword && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowResetPasswordModal(true)}>
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Redefinir Senha
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowDeactivateDialog(true)}>
                   {member.is_active ? (
                     <>
@@ -168,6 +186,14 @@ export const TeamMemberRow = ({ member }: TeamMemberRowProps) => {
         open={showDeactivateDialog}
         onOpenChange={setShowDeactivateDialog}
       />
+
+      {canResetPassword && (
+        <ResetPasswordModal
+          member={member}
+          open={showResetPasswordModal}
+          onOpenChange={setShowResetPasswordModal}
+        />
+      )}
     </>
   );
 };
