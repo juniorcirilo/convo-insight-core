@@ -6,6 +6,8 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 CREATE EXTENSION IF NOT EXISTS "plpgsql" WITH SCHEMA "pg_catalog";
 CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+BEGIN;
+
 --
 -- PostgreSQL database dump
 --
@@ -40,6 +42,35 @@ CREATE TYPE public.app_role AS ENUM (
     'admin',
     'supervisor',
     'agent'
+);
+
+
+--
+-- Name: lead_source; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.lead_source AS ENUM (
+    'whatsapp',
+    'website',
+    'referral',
+    'ads',
+    'organic',
+    'other'
+);
+
+
+--
+-- Name: lead_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.lead_status AS ENUM (
+    'new',
+    'contacted',
+    'qualified',
+    'proposal',
+    'negotiation',
+    'won',
+    'lost'
 );
 
 
@@ -299,6 +330,67 @@ CREATE TABLE public.conversation_assignments (
 
 
 --
+-- Name: lead_activities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_activities (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lead_id uuid NOT NULL,
+    user_id uuid,
+    activity_type text NOT NULL,
+    description text,
+    old_value text,
+    new_value text,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lead_status_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_status_history (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lead_id uuid NOT NULL,
+    old_status text,
+    new_status text NOT NULL,
+    changed_by uuid,
+    reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.leads (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    contact_id uuid,
+    conversation_id uuid,
+    name text NOT NULL,
+    phone text,
+    email text,
+    company text,
+    status public.lead_status DEFAULT 'new'::public.lead_status NOT NULL,
+    source public.lead_source DEFAULT 'whatsapp'::public.lead_source NOT NULL,
+    value numeric(12,2) DEFAULT 0,
+    probability integer DEFAULT 0,
+    expected_close_date date,
+    assigned_to uuid,
+    notes text,
+    tags text[] DEFAULT '{}'::text[],
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    closed_at timestamp with time zone,
+    pipeline_insight jsonb DEFAULT '{}'::jsonb,
+    CONSTRAINT leads_probability_check CHECK (((probability >= 0) AND (probability <= 100)))
+);
+
+
+--
 -- Name: profiles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -326,6 +418,22 @@ CREATE TABLE public.project_config (
     value text NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: sales_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sales_targets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    target_value numeric(12,2) NOT NULL,
+    target_leads integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -597,6 +705,30 @@ ALTER TABLE ONLY public.conversation_assignments
 
 
 --
+-- Name: lead_activities lead_activities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_activities
+    ADD CONSTRAINT lead_activities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_status_history lead_status_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_status_history
+    ADD CONSTRAINT lead_status_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: leads leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -618,6 +750,14 @@ ALTER TABLE ONLY public.project_config
 
 ALTER TABLE ONLY public.project_config
     ADD CONSTRAINT project_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sales_targets sales_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sales_targets
+    ADD CONSTRAINT sales_targets_pkey PRIMARY KEY (id);
 
 
 --
@@ -841,6 +981,48 @@ CREATE INDEX idx_conversations_instance ON public.whatsapp_conversations USING b
 --
 
 CREATE INDEX idx_conversations_last_message ON public.whatsapp_conversations USING btree (last_message_at DESC);
+
+
+--
+-- Name: idx_lead_activities_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_activities_lead_id ON public.lead_activities USING btree (lead_id);
+
+
+--
+-- Name: idx_lead_status_history_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_status_history_created_at ON public.lead_status_history USING btree (created_at DESC);
+
+
+--
+-- Name: idx_lead_status_history_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_status_history_lead_id ON public.lead_status_history USING btree (lead_id);
+
+
+--
+-- Name: idx_leads_assigned_to; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_assigned_to ON public.leads USING btree (assigned_to);
+
+
+--
+-- Name: idx_leads_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_created_at ON public.leads USING btree (created_at);
+
+
+--
+-- Name: idx_leads_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_status ON public.leads USING btree (status);
 
 
 --
@@ -1068,6 +1250,13 @@ CREATE TRIGGER update_instances_updated_at BEFORE UPDATE ON public.whatsapp_inst
 
 
 --
+-- Name: leads update_leads_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON public.leads FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: whatsapp_macros update_macros_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1086,6 +1275,13 @@ CREATE TRIGGER update_notes_updated_at BEFORE UPDATE ON public.whatsapp_conversa
 --
 
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: sales_targets update_sales_targets_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_sales_targets_updated_at BEFORE UPDATE ON public.sales_targets FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -1137,11 +1333,75 @@ ALTER TABLE ONLY public.conversation_assignments
 
 
 --
+-- Name: lead_activities lead_activities_lead_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_activities
+    ADD CONSTRAINT lead_activities_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lead_activities lead_activities_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_activities
+    ADD CONSTRAINT lead_activities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id);
+
+
+--
+-- Name: lead_status_history lead_status_history_changed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_status_history
+    ADD CONSTRAINT lead_status_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.profiles(id);
+
+
+--
+-- Name: lead_status_history lead_status_history_lead_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_status_history
+    ADD CONSTRAINT lead_status_history_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+
+
+--
+-- Name: leads leads_assigned_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id);
+
+
+--
+-- Name: leads leads_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.whatsapp_contacts(id);
+
+
+--
+-- Name: leads leads_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.whatsapp_conversations(id);
+
+
+--
 -- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sales_targets sales_targets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sales_targets
+    ADD CONSTRAINT sales_targets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id);
 
 
 --
@@ -1273,6 +1533,13 @@ ALTER TABLE ONLY public.whatsapp_sentiment_history
 
 
 --
+-- Name: leads Admins and supervisors can manage all leads; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins and supervisors can manage all leads" ON public.leads USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'supervisor'::public.app_role))) WITH CHECK ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'supervisor'::public.app_role)));
+
+
+--
 -- Name: conversation_assignments Admins and supervisors can manage assignments; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1287,6 +1554,13 @@ CREATE POLICY "Admins and supervisors can manage rules" ON public.assignment_rul
 
 
 --
+-- Name: lead_status_history Admins and supervisors can view all history; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins and supervisors can view all history" ON public.lead_status_history FOR SELECT USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'supervisor'::public.app_role)));
+
+
+--
 -- Name: user_roles Admins can manage roles; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1294,10 +1568,40 @@ CREATE POLICY "Admins can manage roles" ON public.user_roles TO authenticated US
 
 
 --
+-- Name: sales_targets Admins can manage targets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can manage targets" ON public.sales_targets USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: profiles Admins can update any profile; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Admins can update any profile" ON public.profiles FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: leads Agents can update their assigned leads; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Agents can update their assigned leads" ON public.leads FOR UPDATE USING (((auth.uid() IS NOT NULL) AND (assigned_to = auth.uid())));
+
+
+--
+-- Name: leads Agents can view and update assigned leads; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Agents can view and update assigned leads" ON public.leads FOR SELECT USING (((auth.uid() IS NOT NULL) AND ((assigned_to = auth.uid()) OR (assigned_to IS NULL))));
+
+
+--
+-- Name: lead_status_history Agents can view history of assigned leads; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Agents can view history of assigned leads" ON public.lead_status_history FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.leads
+  WHERE ((leads.id = lead_status_history.lead_id) AND ((leads.assigned_to = auth.uid()) OR (leads.assigned_to IS NULL))))));
 
 
 --
@@ -1406,6 +1710,20 @@ CREATE POLICY "Users can add reactions on accessible conversations" ON public.wh
 
 
 --
+-- Name: lead_activities Users can create activities; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can create activities" ON public.lead_activities FOR INSERT WITH CHECK ((auth.uid() IS NOT NULL));
+
+
+--
+-- Name: lead_status_history Users can insert history; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can insert history" ON public.lead_status_history FOR INSERT WITH CHECK ((auth.uid() IS NOT NULL));
+
+
+--
 -- Name: whatsapp_messages Users can insert messages in accessible conversations; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1445,6 +1763,13 @@ CREATE POLICY "Users can update own recent messages" ON public.whatsapp_messages
 --
 
 CREATE POLICY "Users can view accessible conversations" ON public.whatsapp_conversations FOR SELECT USING (((auth.uid() IS NOT NULL) AND public.can_access_conversation(auth.uid(), id)));
+
+
+--
+-- Name: lead_activities Users can view activities of accessible leads; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view activities of accessible leads" ON public.lead_activities FOR SELECT USING ((auth.uid() IS NOT NULL));
 
 
 --
@@ -1504,6 +1829,13 @@ CREATE POLICY "Users can view summaries of accessible conversations" ON public.w
 
 
 --
+-- Name: sales_targets Users can view targets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view targets" ON public.sales_targets FOR SELECT USING ((auth.uid() IS NOT NULL));
+
+
+--
 -- Name: whatsapp_topics_history Users can view topics history of accessible conversations; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1523,6 +1855,24 @@ ALTER TABLE public.assignment_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_assignments ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: lead_activities; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.lead_activities ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: lead_status_history; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.lead_status_history ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: leads; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1533,6 +1883,12 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.project_config ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sales_targets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sales_targets ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_roles; Type: ROW SECURITY; Schema: public; Owner: -
@@ -1623,3 +1979,6 @@ ALTER TABLE public.whatsapp_topics_history ENABLE ROW LEVEL SECURITY;
 --
 
 
+
+
+COMMIT;
