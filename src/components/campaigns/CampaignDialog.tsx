@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,17 +11,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Users, Search } from "lucide-react";
+import { Loader2, Users, Search, Image, FileText, X, Upload } from "lucide-react";
 import { useCampaigns, Campaign } from "@/hooks/campaigns/useCampaigns";
 import { useWhatsAppInstances } from "@/hooks/whatsapp/useWhatsAppInstances";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().optional(),
   instance_id: z.string().min(1, "Selecione uma instância"),
   message_content: z.string().min(1, "Mensagem é obrigatória"),
+  message_type: z.enum(["text", "image", "document"]),
   scheduled_at: z.string().optional(),
 });
 
@@ -34,6 +36,12 @@ interface CampaignDialogProps {
 export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogProps) => {
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [contactSearch, setContactSearch] = useState("");
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [existingMediaUrl, setExistingMediaUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const { createCampaign, updateCampaign, isCreating, isUpdating } = useCampaigns();
   const { instances } = useWhatsAppInstances();
@@ -45,11 +53,13 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
       description: "",
       instance_id: "",
       message_content: "",
+      message_type: "text",
       scheduled_at: "",
     },
   });
 
   const selectedInstanceId = form.watch("instance_id");
+  const messageType = form.watch("message_type");
 
   // Fetch contacts for selected instance (only opt-in contacts)
   const { data: contacts, isLoading: contactsLoading } = useQuery({
@@ -83,29 +93,135 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
         description: campaign.description || "",
         instance_id: campaign.instance_id,
         message_content: campaign.message_content,
+        message_type: (campaign.message_type as "text" | "image" | "document") || "text",
         scheduled_at: campaign.scheduled_at || "",
       });
       setSelectedContacts(campaign.target_contacts as string[] || []);
+      // Handle existing media - campaign may have media_url from database
+      const mediaUrl = (campaign as any).media_url;
+      if (mediaUrl) {
+        setExistingMediaUrl(mediaUrl);
+        setMediaPreview(mediaUrl);
+      }
     } else {
       form.reset({
         name: "",
         description: "",
         instance_id: "",
         message_content: "",
+        message_type: "text",
         scheduled_at: "",
       });
       setSelectedContacts([]);
+      setMediaFile(null);
+      setMediaPreview(null);
+      setExistingMediaUrl(null);
     }
-  }, [campaign, form]);
+  }, [campaign, form, open]);
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo é 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setMediaFile(file);
+    setExistingMediaUrl(null);
+
+    // Create preview for images
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMediaPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setMediaPreview(null);
+    }
+  };
+
+  const removeMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setExistingMediaUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const uploadMedia = async (): Promise<{ url: string; mimetype: string } | null> => {
+    if (!mediaFile) return null;
+
+    setIsUploading(true);
+    try {
+      const fileName = `campaigns/${Date.now()}-${mediaFile.name}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("whatsapp-media")
+        .upload(fileName, mediaFile, {
+          contentType: mediaFile.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("whatsapp-media")
+        .getPublicUrl(fileName);
+
+      return {
+        url: publicUrlData.publicUrl,
+        mimetype: mediaFile.type,
+      };
+    } catch (error: any) {
+      console.error("Error uploading media:", error);
+      toast({
+        title: "Erro ao fazer upload",
+        description: error.message || "Tente novamente",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    let mediaUrl = existingMediaUrl;
+    let mediaMimetype = null;
+
+    // Upload new media if selected
+    if (mediaFile && messageType !== "text") {
+      const uploadResult = await uploadMedia();
+      if (!uploadResult) {
+        toast({
+          title: "Erro",
+          description: "Falha ao fazer upload da mídia",
+          variant: "destructive",
+        });
+        return;
+      }
+      mediaUrl = uploadResult.url;
+      mediaMimetype = uploadResult.mimetype;
+    }
+
     const payload = {
       name: values.name,
       instance_id: values.instance_id,
       message_content: values.message_content,
+      message_type: values.message_type,
       description: values.description,
       target_contacts: selectedContacts,
       scheduled_at: values.scheduled_at || undefined,
+      media_url: values.message_type !== "text" ? mediaUrl : null,
+      media_mimetype: values.message_type !== "text" ? mediaMimetype : null,
     };
 
     if (campaign) {
@@ -133,6 +249,12 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
 
   const deselectAllContacts = () => {
     setSelectedContacts([]);
+  };
+
+  const getAcceptedFileTypes = () => {
+    if (messageType === "image") return "image/*";
+    if (messageType === "document") return ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt";
+    return "";
   };
 
   return (
@@ -202,21 +324,131 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
               )}
             />
 
+            {/* Message Type Selection */}
+            <FormField
+              control={form.control}
+              name="message_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Mensagem</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="text">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Texto
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="image">
+                        <div className="flex items-center gap-2">
+                          <Image className="h-4 w-4" />
+                          Imagem
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="document">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Documento
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Media Upload */}
+            {messageType !== "text" && (
+              <div className="space-y-3">
+                <FormLabel>
+                  {messageType === "image" ? "Imagem" : "Documento"}
+                </FormLabel>
+                
+                {(mediaPreview || mediaFile) ? (
+                  <div className="relative border rounded-md p-4">
+                    {messageType === "image" && mediaPreview && (
+                      <img 
+                        src={mediaPreview} 
+                        alt="Preview" 
+                        className="max-h-48 rounded-md mx-auto"
+                      />
+                    )}
+                    {messageType === "document" && mediaFile && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm">{mediaFile.name}</span>
+                      </div>
+                    )}
+                    {messageType === "document" && existingMediaUrl && !mediaFile && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm">Documento existente</span>
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={removeMedia}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div 
+                    className="border-2 border-dashed rounded-md p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Clique para selecionar {messageType === "image" ? "uma imagem" : "um documento"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Máximo 10MB
+                    </p>
+                  </div>
+                )}
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={getAcceptedFileTypes()}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="message_content"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mensagem</FormLabel>
+                  <FormLabel>
+                    {messageType === "text" ? "Mensagem" : "Legenda"}
+                  </FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Digite a mensagem que será enviada..."
-                      className="min-h-[120px]"
+                      placeholder={messageType === "text" 
+                        ? "Digite a mensagem que será enviada..." 
+                        : "Digite a legenda da mídia (opcional)..."
+                      }
+                      className="min-h-[100px]"
                       {...field} 
                     />
                   </FormControl>
                   <FormDescription>
-                    A mensagem será enviada para todos os contatos selecionados
+                    {messageType === "text" 
+                      ? "A mensagem será enviada para todos os contatos selecionados"
+                      : "A legenda aparecerá junto com a mídia"
+                    }
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -270,7 +502,7 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
                     />
                   </div>
 
-                  <ScrollArea className="h-[200px] border rounded-md p-2">
+                  <ScrollArea className="h-[180px] border rounded-md p-2">
                     {contactsLoading ? (
                       <div className="flex items-center justify-center h-full">
                         <Loader2 className="h-6 w-6 animate-spin" />
@@ -315,9 +547,14 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isCreating || isUpdating || selectedContacts.length === 0}>
-                {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {campaign ? "Salvar" : "Criar Campanha"}
+              <Button 
+                type="submit" 
+                disabled={isCreating || isUpdating || isUploading || selectedContacts.length === 0}
+              >
+                {(isCreating || isUpdating || isUploading) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isUploading ? "Enviando mídia..." : campaign ? "Salvar" : "Criar Campanha"}
               </Button>
             </div>
           </form>

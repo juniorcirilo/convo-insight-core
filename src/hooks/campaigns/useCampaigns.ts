@@ -34,6 +34,8 @@ export interface CreateCampaignInput {
   button_options?: any[];
   target_contacts?: any[];
   scheduled_at?: string;
+  media_url?: string | null;
+  media_mimetype?: string | null;
 }
 
 export const useCampaigns = (instanceId?: string) => {

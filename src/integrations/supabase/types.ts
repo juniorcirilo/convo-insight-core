@@ -236,6 +236,9 @@ export type Database = {
           failed_count: number | null
           id: string
           instance_id: string
+          media_mimetype: string | null
+          media_type: string | null
+          media_url: string | null
           message_content: string
           message_type: string
           name: string
@@ -258,6 +261,9 @@ export type Database = {
           failed_count?: number | null
           id?: string
           instance_id: string
+          media_mimetype?: string | null
+          media_type?: string | null
+          media_url?: string | null
           message_content: string
           message_type?: string
           name: string
@@ -280,6 +286,9 @@ export type Database = {
           failed_count?: number | null
           id?: string
           instance_id?: string
+          media_mimetype?: string | null
+          media_type?: string | null
+          media_url?: string | null
           message_content?: string
           message_type?: string
           name?: string

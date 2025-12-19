@@ -136,10 +136,17 @@ Deno.serve(async (req) => {
     }
 
     // Start sending messages in background
+    const campaignData = {
+      message_content: campaign.message_content,
+      message_type: campaign.message_type || 'text',
+      media_url: campaign.media_url,
+      media_mimetype: campaign.media_mimetype,
+    };
+
     (globalThis as any).EdgeRuntime?.waitUntil?.(sendCampaignMessages(
       supabase,
       campaign_id,
-      campaign.message_content,
+      campaignData,
       contacts || [],
       secrets.api_url,
       secrets.api_key,
@@ -148,7 +155,7 @@ Deno.serve(async (req) => {
     )) || sendCampaignMessages(
       supabase,
       campaign_id,
-      campaign.message_content,
+      campaignData,
       contacts || [],
       secrets.api_url,
       secrets.api_key,
@@ -174,10 +181,17 @@ Deno.serve(async (req) => {
   }
 });
 
+interface CampaignData {
+  message_content: string;
+  message_type: string;
+  media_url: string | null;
+  media_mimetype: string | null;
+}
+
 async function sendCampaignMessages(
   supabase: any,
   campaignId: string,
-  messageContent: string,
+  campaignData: CampaignData,
   contacts: Array<{ id: string; phone_number: string; name: string }>,
   apiUrl: string,
   apiKey: string,
@@ -185,6 +199,7 @@ async function sendCampaignMessages(
   providerType: string
 ) {
   console.log(`[send-campaign-messages] Starting to send ${contacts.length} messages`);
+  console.log(`[send-campaign-messages] Message type: ${campaignData.message_type}`);
 
   let sentCount = 0;
   let failedCount = 0;
@@ -203,18 +218,48 @@ async function sendCampaignMessages(
     try {
       console.log(`[send-campaign-messages] Sending to: ${contact.phone_number}`);
 
-      // Send message via Evolution API
-      const response = await fetch(
-        `${apiUrl}/message/sendText/${instanceName}`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
+      let endpoint: string;
+      let body: any;
+
+      // Choose endpoint and body based on message type
+      switch (campaignData.message_type) {
+        case 'image':
+          endpoint = `${apiUrl}/message/sendMedia/${instanceName}`;
+          body = {
             number: contact.phone_number,
-            text: messageContent,
-          }),
-        }
-      );
+            mediatype: 'image',
+            media: campaignData.media_url,
+            caption: campaignData.message_content || '',
+          };
+          break;
+
+        case 'document':
+          endpoint = `${apiUrl}/message/sendMedia/${instanceName}`;
+          body = {
+            number: contact.phone_number,
+            mediatype: 'document',
+            media: campaignData.media_url,
+            caption: campaignData.message_content || '',
+            fileName: 'document',
+          };
+          break;
+
+        case 'text':
+        default:
+          endpoint = `${apiUrl}/message/sendText/${instanceName}`;
+          body = {
+            number: contact.phone_number,
+            text: campaignData.message_content,
+          };
+          break;
+      }
+
+      // Send message via Evolution API
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
 
       const responseData = await response.json();
 
@@ -240,7 +285,7 @@ async function sendCampaignMessages(
           .from('campaign_logs')
           .update({
             status: 'failed',
-            error_message: responseData.message || 'Unknown error',
+            error_message: responseData.message || responseData.error || 'Unknown error',
           })
           .eq('campaign_id', campaignId)
           .eq('contact_id', contact.id);
