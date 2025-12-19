@@ -11,3 +11,8 @@ export { AssignmentRulesManager } from "./AssignmentRulesManager";
 export { InstanceSetupCollapsible } from "./InstanceSetupCollapsible";
 export { SetupGuideCollapsible } from "./SetupGuideCollapsible";
 export { SecuritySettings } from "./SecuritySettings";
+export { WebhooksManager } from "./WebhooksManager";
+export { WebhookDialog } from "./WebhookDialog";
+export { WebhookLogsDialog } from "./WebhookLogsDialog";
+export { ApiTokensManager } from "./ApiTokensManager";
+export { ApiTokenDialog } from "./ApiTokenDialog";
