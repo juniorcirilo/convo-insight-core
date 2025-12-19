@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 142 47% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 142 47% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 142 47% 12%;
+
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 142 30% 96%;
+    --secondary-foreground: 142 47% 12%;
+
+    --muted: 142 10% 95%;
+    --muted-foreground: 142 8% 46%;
+
+    --accent: 213 94% 68%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 142 20% 90%;
+    --input: 142 20% 90%;
+    --ring: 142 76% 36%;
+
+    --success: 142 76% 36%;
+    --warning: 45 93% 47%;
+    --info: 213 94% 68%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 142 10% 98%;
+    --sidebar-foreground: 142 47% 12%;
+    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 10% 95%;
+    --sidebar-accent-foreground: 142 47% 12%;
+    --sidebar-border: 142 20% 92%;
+    --sidebar-ring: 142 76% 36%;
+  }
+
+  .dark {
+    --background: 142 20% 7%;
+    --foreground: 142 10% 95%;
+
+    --card: 142 20% 9%;
+    --card-foreground: 142 10% 95%;
+
+    --popover: 142 20% 9%;
+    --popover-foreground: 142 10% 95%;
+
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 142 20% 15%;
+    --secondary-foreground: 142 10% 95%;
+
+    --muted: 142 20% 15%;
+    --muted-foreground: 142 10% 65%;
+
+    --accent: 213 94% 68%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 142 20% 20%;
+    --input: 142 20% 20%;
+    --ring: 142 76% 36%;
+
+    --success: 142 76% 36%;
+    --warning: 45 93% 47%;
+    --info: 213 94% 68%;
+
+    --sidebar-background: 142 20% 9%;
+    --sidebar-foreground: 142 10% 95%;
+    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 20% 15%;
+    --sidebar-accent-foreground: 142 10% 95%;
+    --sidebar-border: 142 20% 20%;
+    --sidebar-ring: 142 76% 36%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
