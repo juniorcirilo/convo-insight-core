@@ -3,11 +3,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InstancesList, AddInstanceDialog, TeamMembersList, AssignmentRulesManager, InstanceSetupCollapsible, SetupGuideCollapsible, SecuritySettings, WebhooksManager, ApiTokensManager } from "@/components/settings";
+import { InstancesList, AddInstanceDialog, TeamMembersList, AssignmentRulesManager, InstanceSetupCollapsible, SetupGuideCollapsible, SecuritySettings, WebhooksManager, ApiTokensManager, SectorsManager } from "@/components/settings";
 import { MacrosManager } from "@/components/macros";
 import { CampaignsManager } from "@/components/campaigns";
 import { useAuth } from "@/contexts/AuthContext";
-
 const WhatsAppSettings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -46,6 +45,7 @@ const WhatsAppSettings = () => {
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="setup">Setup</TabsTrigger>
             <TabsTrigger value="instances">Instâncias</TabsTrigger>
+            <TabsTrigger value="sectors">Setores</TabsTrigger>
             <TabsTrigger value="macros">Macros</TabsTrigger>
             <TabsTrigger value="assignment">Atribuição</TabsTrigger>
             {isAdmin && <TabsTrigger value="campaigns">Campanhas</TabsTrigger>}
@@ -71,6 +71,10 @@ const WhatsAppSettings = () => {
               </Button>
             </div>
             <InstancesList />
+          </TabsContent>
+
+          <TabsContent value="sectors" className="mt-6">
+            <SectorsManager />
           </TabsContent>
 
           <TabsContent value="macros" className="mt-6">

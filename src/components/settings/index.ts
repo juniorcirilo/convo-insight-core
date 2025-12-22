@@ -16,3 +16,6 @@ export { WebhookDialog } from "./WebhookDialog";
 export { WebhookLogsDialog } from "./WebhookLogsDialog";
 export { ApiTokensManager } from "./ApiTokensManager";
 export { ApiTokenDialog } from "./ApiTokenDialog";
+export { SectorsManager } from "./SectorsManager";
+export { SectorDialog } from "./SectorDialog";
+export { SectorMembersDialog } from "./SectorMembersDialog";

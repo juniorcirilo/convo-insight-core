@@ -122,6 +122,7 @@ export type Database = {
           round_robin_agents: string[] | null
           round_robin_last_index: number | null
           rule_type: string
+          sector_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -134,6 +135,7 @@ export type Database = {
           round_robin_agents?: string[] | null
           round_robin_last_index?: number | null
           rule_type: string
+          sector_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -146,6 +148,7 @@ export type Database = {
           round_robin_agents?: string[] | null
           round_robin_last_index?: number | null
           rule_type?: string
+          sector_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -161,6 +164,13 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_rules_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
@@ -665,6 +675,47 @@ export type Database = {
           },
         ]
       }
+      sectors: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          instance_id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          instance_id: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          instance_id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sectors_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -685,6 +736,45 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_sectors: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          sector_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          sector_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          sector_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sectors_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_sectors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_logs: {
         Row: {
@@ -946,6 +1036,7 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           metadata: Json | null
+          sector_id: string | null
           status: string | null
           unread_count: number | null
           updated_at: string
@@ -959,6 +1050,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           metadata?: Json | null
+          sector_id?: string | null
           status?: string | null
           unread_count?: number | null
           updated_at?: string
@@ -972,6 +1064,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           metadata?: Json | null
+          sector_id?: string | null
           status?: string | null
           unread_count?: number | null
           updated_at?: string
@@ -996,6 +1089,13 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversations_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
@@ -1423,6 +1523,14 @@ export type Database = {
         Returns: boolean
       }
       is_first_user: { Args: never; Returns: boolean }
+      user_belongs_to_instance: {
+        Args: { _instance_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_belongs_to_sector: {
+        Args: { _sector_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "supervisor" | "agent"

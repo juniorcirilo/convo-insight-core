@@ -354,20 +354,43 @@ async function findOrCreateContact(
   }
 }
 
-// Apply auto-assignment rules
+// Apply auto-assignment rules with sector priority
 async function applyAutoAssignment(
   supabase: any,
   instanceId: string,
-  conversationId: string
+  conversationId: string,
+  sectorId?: string | null
 ): Promise<void> {
   try {
-    // 1. Buscar regra ativa para a instância
-    const { data: rule } = await supabase
-      .from('assignment_rules')
-      .select('*')
-      .eq('instance_id', instanceId)
-      .eq('is_active', true)
-      .maybeSingle();
+    // 1. Buscar regra ativa para o setor primeiro (se tiver setor)
+    let rule = null;
+    
+    if (sectorId) {
+      const { data: sectorRule } = await supabase
+        .from('assignment_rules')
+        .select('*')
+        .eq('instance_id', instanceId)
+        .eq('sector_id', sectorId)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      rule = sectorRule;
+      console.log('[auto-assignment] Sector-specific rule:', sectorRule ? 'found' : 'not found');
+    }
+
+    // 2. Fallback para regra geral da instância (sem setor específico)
+    if (!rule) {
+      const { data: instanceRule } = await supabase
+        .from('assignment_rules')
+        .select('*')
+        .eq('instance_id', instanceId)
+        .is('sector_id', null)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      rule = instanceRule;
+      console.log('[auto-assignment] Instance rule:', instanceRule ? 'found' : 'not found');
+    }
 
     if (!rule) {
       console.log('[auto-assignment] No active rule found for instance:', instanceId);
@@ -382,7 +405,24 @@ async function applyAutoAssignment(
       console.log('[auto-assignment] Fixed assignment to:', assignedTo);
     } else if (rule.rule_type === 'round_robin') {
       // Round-robin
-      const agents = rule.round_robin_agents || [];
+      let agents = rule.round_robin_agents || [];
+      
+      // Se temos setor, priorizar agentes do setor
+      if (sectorId && agents.length > 0) {
+        const { data: sectorAgents } = await supabase
+          .from('user_sectors')
+          .select('user_id')
+          .eq('sector_id', sectorId);
+        
+        const sectorAgentIds = (sectorAgents || []).map((sa: any) => sa.user_id);
+        const sectorEligibleAgents = agents.filter((id: string) => sectorAgentIds.includes(id));
+        
+        if (sectorEligibleAgents.length > 0) {
+          agents = sectorEligibleAgents;
+          console.log('[auto-assignment] Filtered to sector agents:', agents.length);
+        }
+      }
+
       if (agents.length === 0) {
         console.log('[auto-assignment] No agents in round-robin list');
         return;
@@ -432,7 +472,7 @@ async function findOrCreateConversation(
     // Try to find existing conversation
     const { data: existingConversation, error: findError } = await supabase
       .from('whatsapp_conversations')
-      .select('id')
+      .select('id, sector_id')
       .eq('instance_id', instanceId)
       .eq('contact_id', contactId)
       .maybeSingle();
@@ -446,13 +486,26 @@ async function findOrCreateConversation(
       return existingConversation.id;
     }
 
-    // Create new conversation
+    // Find default sector for this instance
+    const { data: defaultSector } = await supabase
+      .from('sectors')
+      .select('id')
+      .eq('instance_id', instanceId)
+      .eq('is_default', true)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    const sectorId = defaultSector?.id || null;
+    console.log('[evolution-webhook] Default sector for new conversation:', sectorId);
+
+    // Create new conversation with sector
     const { data: newConversation, error: createError } = await supabase
       .from('whatsapp_conversations')
       .insert({
         instance_id: instanceId,
         contact_id: contactId,
         status: 'active',
+        sector_id: sectorId,
       })
       .select('id')
       .single();
@@ -464,8 +517,8 @@ async function findOrCreateConversation(
 
     console.log('[evolution-webhook] Conversation created:', newConversation.id);
     
-    // Apply auto-assignment for new conversations
-    await applyAutoAssignment(supabase, instanceId, newConversation.id);
+    // Apply auto-assignment for new conversations (with sector context)
+    await applyAutoAssignment(supabase, instanceId, newConversation.id, sectorId);
     
     return newConversation.id;
   } catch (error) {
