@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InstancesList, AddInstanceDialog, TeamMembersList, AssignmentRulesManager, InstanceSetupCollapsible, SetupGuideCollapsible, SecuritySettings, WebhooksManager, ApiTokensManager, SectorsManager } from "@/components/settings";
@@ -23,12 +23,23 @@ const WhatsAppSettings = () => {
       <div className="container max-w-6xl py-8 space-y-8">
         {/* Header */}
         <div className="space-y-4">
-          <Link to="/whatsapp">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar para WhatsApp
-            </Button>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/whatsapp">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar para WhatsApp
+              </Button>
+            </Link>
+            
+            {isAdmin && (
+              <Link to="/admin/permissoes">
+                <Button variant="outline" size="sm">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Central de Permissões
+                </Button>
+              </Link>
+            )}
+          </div>
           
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
