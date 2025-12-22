@@ -43,6 +43,7 @@ const App = () => {
                 <Route path="/whatsapp/contatos" element={<ProtectedRoute><WhatsAppContatos /></ProtectedRoute>} />
                 <Route path="/vendas" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
                 <Route path="/admin/conversas" element={<ProtectedRoute><AdminRoute><AdminConversations /></AdminRoute></ProtectedRoute>} />
+                <Route path="/admin/permissoes" element={<ProtectedRoute><AdminRoute allowedRoles={['admin']}><PermissionsCenter /></AdminRoute></ProtectedRoute>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
