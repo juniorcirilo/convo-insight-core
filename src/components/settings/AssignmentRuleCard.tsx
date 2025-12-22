@@ -1,4 +1,4 @@
-import { Settings2, Trash2, Users, User } from "lucide-react";
+import { Settings2, Trash2, Users, User, Building2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import type { AssignmentRule } from "@/hooks/whatsapp/useAssignmentRules";
 import { useWhatsAppInstances } from "@/hooks/whatsapp";
 import { useAgents } from "@/hooks/useAgents";
+import { useSectors } from "@/hooks/useSectors";
 
 interface AssignmentRuleCardProps {
   rule: AssignmentRule;
@@ -22,8 +23,10 @@ export function AssignmentRuleCard({
 }: AssignmentRuleCardProps) {
   const { instances = [] } = useWhatsAppInstances();
   const { agents = [] } = useAgents();
+  const { sectors = [] } = useSectors(rule.instance_id || undefined);
 
   const instance = instances.find((i) => i.id === rule.instance_id);
+  const sector = rule.sector_id ? sectors.find((s) => s.id === rule.sector_id) : null;
   const fixedAgent = rule.fixed_agent_id
     ? agents.find((a) => a.id === rule.fixed_agent_id)
     : null;
@@ -42,11 +45,26 @@ export function AssignmentRuleCard({
             </Badge>
           </div>
           
-          {instance && (
-            <p className="text-sm text-muted-foreground">
-              Instância: {instance.name}
-            </p>
-          )}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {instance && (
+              <span>Instância: {instance.name}</span>
+            )}
+            {sector && (
+              <>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  {sector.name}
+                </span>
+              </>
+            )}
+            {!sector && instance && (
+              <>
+                <span>•</span>
+                <span className="text-muted-foreground/70">Todos os setores</span>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

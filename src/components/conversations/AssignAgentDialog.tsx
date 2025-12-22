@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,9 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { useAgents } from '@/hooks/useAgents';
 import { useConversationAssignment } from '@/hooks/whatsapp/useConversationAssignment';
-import { MessageSquare, Circle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { MessageSquare, Circle, Building2 } from 'lucide-react';
 
 interface AssignAgentDialogProps {
   open: boolean;
@@ -32,10 +35,35 @@ export function AssignAgentDialog({
   currentAssignee,
   isTransfer = false,
 }: AssignAgentDialogProps) {
-  const { agents, isLoading } = useAgents();
+  const { isAdmin, isSupervisor } = useAuth();
+  const [conversationSectorId, setConversationSectorId] = useState<string | null>(null);
+  const [showAllAgents, setShowAllAgents] = useState(false);
+  
+  // Fetch conversation sector
+  useEffect(() => {
+    if (conversationId && open) {
+      supabase
+        .from('whatsapp_conversations')
+        .select('sector_id')
+        .eq('id', conversationId)
+        .single()
+        .then(({ data }) => {
+          setConversationSectorId(data?.sector_id || null);
+        });
+    }
+  }, [conversationId, open]);
+
+  // Use sector filter unless admin/supervisor wants to see all
+  const shouldFilterBySector = conversationSectorId && !showAllAgents;
+  const { agents, isLoading } = useAgents(
+    shouldFilterBySector ? { sectorId: conversationSectorId } : undefined
+  );
+  
   const { assignConversation, transferConversation, isAssigning, isTransferring } = useConversationAssignment();
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+
+  const canShowAllAgents = isAdmin || isSupervisor;
 
   const handleConfirm = () => {
     if (!selectedAgent) return;
@@ -88,6 +116,9 @@ export function AssignAgentDialog({
   };
 
   const availableAgents = agents.filter(agent => agent.id !== currentAssignee);
+  const isAgentInSector = (agent: typeof agents[0]) => {
+    return conversationSectorId ? agent.sectors.includes(conversationSectorId) : true;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,6 +134,22 @@ export function AssignAgentDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Toggle to show all agents (admin/supervisor only) */}
+        {canShowAllAgents && conversationSectorId && (
+          <div className="flex items-center justify-between py-2 px-1 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Mostrar agentes de todos os setores
+              </span>
+            </div>
+            <Switch
+              checked={showAllAgents}
+              onCheckedChange={setShowAllAgents}
+            />
+          </div>
+        )}
+
         <ScrollArea className="max-h-[400px] pr-4">
           <div className="space-y-2">
             {isLoading ? (
@@ -112,6 +159,11 @@ export function AssignAgentDialog({
             ) : availableAgents.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 Nenhum atendente disponível
+                {conversationSectorId && !showAllAgents && (
+                  <p className="text-xs mt-1">
+                    Tente habilitar "Mostrar todos os setores"
+                  </p>
+                )}
               </div>
             ) : (
               availableAgents.map(agent => (
@@ -140,7 +192,7 @@ export function AssignAgentDialog({
                         <Circle className={`h-2 w-2 fill-current ${getStatusColor(agent.status)}`} />
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <Badge variant="outline" className="text-xs">
                           {agent.role === 'admin' ? 'Admin' : agent.role === 'supervisor' ? 'Supervisor' : 'Agente'}
                         </Badge>
@@ -149,6 +201,13 @@ export function AssignAgentDialog({
                           <MessageSquare className="h-3 w-3" />
                           <span>{agent.activeConversations} ativa{agent.activeConversations !== 1 ? 's' : ''}</span>
                         </div>
+
+                        {/* Show sector indicator */}
+                        {conversationSectorId && !isAgentInSector(agent) && (
+                          <Badge variant="secondary" className="text-xs">
+                            Outro setor
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>

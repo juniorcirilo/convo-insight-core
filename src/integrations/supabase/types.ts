@@ -1511,6 +1511,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agent_can_be_assigned_to_conversation: {
+        Args: { _agent_id: string; _conversation_id: string }
+        Returns: boolean
+      }
       can_access_conversation: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean

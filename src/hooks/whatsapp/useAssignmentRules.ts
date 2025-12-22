@@ -6,6 +6,7 @@ export interface AssignmentRule {
   id: string;
   name: string;
   instance_id: string;
+  sector_id: string | null;
   rule_type: 'fixed' | 'round_robin';
   fixed_agent_id: string | null;
   round_robin_agents: string[];

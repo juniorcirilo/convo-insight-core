@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -17,11 +17,20 @@ interface Profile {
   updated_at: string;
 }
 
+interface UserSector {
+  id: string;
+  sector_id: string;
+  is_primary: boolean;
+  sector_name?: string;
+  instance_id?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  userSectors: UserSector[];
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
@@ -33,6 +42,10 @@ interface AuthContextType {
   isAgent: boolean;
   isApproved: boolean;
   shouldRedirectToSetup: boolean;
+  getSectorIds: () => string[];
+  isInSector: (sectorId: string) => boolean;
+  getInstanceIds: () => string[];
+  isInInstance: (instanceId: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [userSectors, setUserSectors] = useState<UserSector[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasRedirectedToSetup, setHasRedirectedToSetup] = useState(false);
   const { toast } = useToast();
@@ -113,6 +127,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(roleData.role as AppRole);
       } else {
         console.warn('⚠️ [AuthContext] No role found for user:', userId);
+      }
+
+      // Load user sectors
+      const { data: sectorsData, error: sectorsError } = await supabase
+        .from('user_sectors')
+        .select(`
+          id,
+          sector_id,
+          is_primary,
+          sectors!inner(name, instance_id)
+        `)
+        .eq('user_id', userId);
+
+      if (sectorsError) {
+        console.error('❌ [AuthContext] Error loading user sectors:', sectorsError);
+      } else if (sectorsData) {
+        const mappedSectors: UserSector[] = sectorsData.map((us: any) => ({
+          id: us.id,
+          sector_id: us.sector_id,
+          is_primary: us.is_primary,
+          sector_name: us.sectors?.name,
+          instance_id: us.sectors?.instance_id,
+        }));
+        console.log('✅ [AuthContext] User sectors loaded:', mappedSectors);
+        setUserSectors(mappedSectors);
       }
 
       // If profile OR role is missing, try to auto-create them
@@ -318,6 +357,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Determine if admin should be redirected to setup (only once per session)
   const shouldRedirectToSetup = isAdmin && !isCheckingConfig && isConfigured === false && !hasRedirectedToSetup;
 
+  // Helper functions for sector-based access control
+  const getSectorIds = useCallback(() => {
+    return userSectors.map(us => us.sector_id);
+  }, [userSectors]);
+
+  const isInSector = useCallback((sectorId: string) => {
+    return userSectors.some(us => us.sector_id === sectorId);
+  }, [userSectors]);
+
+  const getInstanceIds = useCallback(() => {
+    const instanceIds = userSectors
+      .map(us => us.instance_id)
+      .filter((id): id is string => !!id);
+    return [...new Set(instanceIds)];
+  }, [userSectors]);
+
+  const isInInstance = useCallback((instanceId: string) => {
+    return userSectors.some(us => us.instance_id === instanceId);
+  }, [userSectors]);
+
   console.log('🔐 [AuthContext] Current auth state:', { 
     userId: user?.id, 
     role, 
@@ -325,7 +384,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isSupervisor, 
     isAgent,
     profileEmail: profile?.id,
-    shouldRedirectToSetup
+    shouldRedirectToSetup,
+    userSectorsCount: userSectors.length
   });
 
   const value: AuthContextType = {
@@ -333,6 +393,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     role,
+    userSectors,
     isLoading,
     signIn,
     signUp,
@@ -344,6 +405,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAgent,
     isApproved,
     shouldRedirectToSetup,
+    getSectorIds,
+    isInSector,
+    getInstanceIds,
+    isInInstance,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

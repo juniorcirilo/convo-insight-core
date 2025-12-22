@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   Dialog,
@@ -21,6 +21,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useWhatsAppInstances } from "@/hooks/whatsapp";
 import { useAgents } from "@/hooks/useAgents";
+import { useSectors } from "@/hooks/useSectors";
 import { AgentMultiSelect } from "./AgentMultiSelect";
 import type { AssignmentRule } from "@/hooks/whatsapp/useAssignmentRules";
 
@@ -34,6 +35,7 @@ interface AssignmentRuleDialogProps {
 interface FormData {
   name: string;
   instance_id: string;
+  sector_id: string;
   rule_type: 'fixed' | 'round_robin';
   fixed_agent_id: string;
   round_robin_agents: string[];
@@ -46,7 +48,6 @@ export function AssignmentRuleDialog({
   onSave,
 }: AssignmentRuleDialogProps) {
   const { instances = [] } = useWhatsAppInstances();
-  const { agents = [] } = useAgents();
   
   const [ruleType, setRuleType] = useState<'fixed' | 'round_robin'>(
     rule?.rule_type || 'fixed'
@@ -55,20 +56,71 @@ export function AssignmentRuleDialog({
     rule?.round_robin_agents || []
   );
 
-  const { register, handleSubmit, watch, setValue } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, reset } = useForm<FormData>({
     defaultValues: {
       name: rule?.name || "",
       instance_id: rule?.instance_id || "",
+      sector_id: rule?.sector_id || "",
       rule_type: rule?.rule_type || 'fixed',
       fixed_agent_id: rule?.fixed_agent_id || "",
       round_robin_agents: rule?.round_robin_agents || [],
     },
   });
 
+  const selectedInstanceId = watch("instance_id");
+  const selectedSectorId = watch("sector_id");
+  
+  // Load sectors for selected instance
+  const { sectors = [] } = useSectors(selectedInstanceId || undefined);
+  
+  // Load agents filtered by sector if selected, otherwise by instance
+  const { agents = [] } = useAgents(
+    selectedSectorId 
+      ? { sectorId: selectedSectorId }
+      : selectedInstanceId 
+        ? { instanceId: selectedInstanceId }
+        : undefined
+  );
+
+  // Reset sector when instance changes
+  useEffect(() => {
+    if (selectedInstanceId && !rule?.sector_id) {
+      setValue("sector_id", "");
+    }
+  }, [selectedInstanceId, setValue, rule]);
+
+  // Reset form when rule changes
+  useEffect(() => {
+    if (rule) {
+      reset({
+        name: rule.name || "",
+        instance_id: rule.instance_id || "",
+        sector_id: rule.sector_id || "",
+        rule_type: rule.rule_type || 'fixed',
+        fixed_agent_id: rule.fixed_agent_id || "",
+        round_robin_agents: rule.round_robin_agents || [],
+      });
+      setRuleType(rule.rule_type as 'fixed' | 'round_robin' || 'fixed');
+      setRoundRobinAgents(rule.round_robin_agents || []);
+    } else {
+      reset({
+        name: "",
+        instance_id: "",
+        sector_id: "",
+        rule_type: 'fixed',
+        fixed_agent_id: "",
+        round_robin_agents: [],
+      });
+      setRuleType('fixed');
+      setRoundRobinAgents([]);
+    }
+  }, [rule, reset]);
+
   const onSubmit = (data: FormData) => {
     const payload = {
       name: data.name,
       instance_id: data.instance_id,
+      sector_id: data.sector_id || null,
       rule_type: ruleType,
       fixed_agent_id: ruleType === 'fixed' ? data.fixed_agent_id : null,
       round_robin_agents: ruleType === 'round_robin' ? roundRobinAgents : [],
@@ -124,6 +176,32 @@ export function AssignmentRuleDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Sector selector (optional) */}
+          {selectedInstanceId && (
+            <div className="space-y-2">
+              <Label htmlFor="sector">Setor (opcional)</Label>
+              <Select
+                value={watch("sector_id")}
+                onValueChange={(value) => setValue("sector_id", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os setores da instância..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos os setores</SelectItem>
+                  {sectors.map((sector) => (
+                    <SelectItem key={sector.id} value={sector.id}>
+                      {sector.name} {sector.is_default && "(Padrão)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Se selecionado, a regra só se aplica a conversas deste setor
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <Label>Tipo de Atribuição</Label>
@@ -184,6 +262,8 @@ export function AssignmentRuleDialog({
               <AgentMultiSelect
                 value={roundRobinAgents}
                 onChange={setRoundRobinAgents}
+                sectorId={selectedSectorId || undefined}
+                instanceId={!selectedSectorId ? selectedInstanceId : undefined}
               />
             </div>
           )}

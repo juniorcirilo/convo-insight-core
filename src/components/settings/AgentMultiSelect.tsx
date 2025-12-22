@@ -19,10 +19,14 @@ import { useAgents } from "@/hooks/useAgents";
 interface AgentMultiSelectProps {
   value: string[];
   onChange: (value: string[]) => void;
+  sectorId?: string;
+  instanceId?: string;
 }
 
-export function AgentMultiSelect({ value, onChange }: AgentMultiSelectProps) {
-  const { agents = [] } = useAgents();
+export function AgentMultiSelect({ value, onChange, sectorId, instanceId }: AgentMultiSelectProps) {
+  const { agents = [] } = useAgents(
+    sectorId ? { sectorId } : instanceId ? { instanceId } : undefined
+  );
 
   const selectedAgents = agents.filter(agent => value.includes(agent.id));
 
