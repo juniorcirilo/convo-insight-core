@@ -7,6 +7,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth";
 import { AdminRoute } from "@/components/auth/AdminRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -32,21 +33,90 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/pending-approval" element={<ProtectedRoute><PendingApproval /></ProtectedRoute>} />
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/whatsapp" element={<ProtectedRoute><WhatsApp /></ProtectedRoute>} />
-                <Route path="/whatsapp/settings" element={<ProtectedRoute><WhatsAppSettings /></ProtectedRoute>} />
-                <Route path="/whatsapp/relatorio" element={<ProtectedRoute><WhatsAppRelatorio /></ProtectedRoute>} />
-                <Route path="/whatsapp/contatos" element={<ProtectedRoute><WhatsAppContatos /></ProtectedRoute>} />
-                <Route path="/vendas" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
-                <Route path="/admin/conversas" element={<ProtectedRoute><AdminRoute><AdminConversations /></AdminRoute></ProtectedRoute>} />
-                <Route path="/admin/permissoes" element={<ProtectedRoute><AdminRoute allowedRoles={['admin']}><PermissionsCenter /></AdminRoute></ProtectedRoute>} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route
+                    path="/pending-approval"
+                    element={
+                      <ProtectedRoute>
+                        <PendingApproval />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/whatsapp"
+                    element={
+                      <ProtectedRoute>
+                        <WhatsApp />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/whatsapp/settings"
+                    element={
+                      <ProtectedRoute>
+                        <WhatsAppSettings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/whatsapp/relatorio"
+                    element={
+                      <ProtectedRoute>
+                        <WhatsAppRelatorio />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/whatsapp/contatos"
+                    element={
+                      <ProtectedRoute>
+                        <WhatsAppContatos />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/vendas"
+                    element={
+                      <ProtectedRoute>
+                        <SalesDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/conversas"
+                    element={
+                      <ProtectedRoute>
+                        <AdminRoute>
+                          <AdminConversations />
+                        </AdminRoute>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/permissoes"
+                    element={
+                      <ProtectedRoute>
+                        <AdminRoute allowedRoles={["admin"]}>
+                          <PermissionsCenter />
+                        </AdminRoute>
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ErrorBoundary>
             </TooltipProvider>
           </NotificationProvider>
         </AuthProvider>
