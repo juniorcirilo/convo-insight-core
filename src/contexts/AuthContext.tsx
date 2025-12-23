@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -58,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userSectors, setUserSectors] = useState<UserSector[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasRedirectedToSetup, setHasRedirectedToSetup] = useState(false);
+  const setupTriggeredRef = useRef(false);
+
   const { toast } = useToast();
   const { setupProject, isConfigured, isCheckingConfig } = useProjectSetup();
 
@@ -257,8 +259,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auto-setup project for admin on first login
   useEffect(() => {
-    if (role === 'admin' && !isCheckingConfig && isConfigured === false) {
-      console.log('[AuthContext] Admin detected, running auto-setup...');
+    const shouldRunSetup =
+      role === 'admin' &&
+      !isCheckingConfig &&
+      isConfigured === false &&
+      setupTriggeredRef.current === false;
+
+    if (shouldRunSetup) {
+      setupTriggeredRef.current = true;
+      console.log('[AuthContext] Admin detected, running auto-setup (once)...');
       setupProject();
       // Also setup infrastructure (storage buckets, realtime)
       setupRemixInfrastructure();
