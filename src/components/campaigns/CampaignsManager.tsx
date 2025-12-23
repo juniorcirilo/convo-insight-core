@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Plus, Send, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,11 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; var
 };
 
 export const CampaignsManager = () => {
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  // eslint-disable-next-line no-console
+  console.debug("[CampaignsManager] render", { count: renderCountRef.current });
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
