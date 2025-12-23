@@ -162,13 +162,16 @@ export function AssignmentRuleDialog({
           <div className="space-y-2">
             <Label htmlFor="instance">Instância</Label>
             <Select
-              value={watch("instance_id")}
-              onValueChange={(value) => setValue("instance_id", value)}
+              value={watch("instance_id") ? watch("instance_id") : "__none"}
+              onValueChange={(value) => setValue("instance_id", value === "__none" ? "" : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar instância..." />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none" disabled>
+                  Selecionar instância...
+                </SelectItem>
                 {instances.filter(instance => instance.id).map((instance) => (
                   <SelectItem key={instance.id} value={instance.id}>
                     {instance.name}
@@ -240,13 +243,16 @@ export function AssignmentRuleDialog({
             <div className="space-y-2">
               <Label htmlFor="agent">Agente</Label>
               <Select
-                value={watch("fixed_agent_id")}
-                onValueChange={(value) => setValue("fixed_agent_id", value)}
+                value={watch("fixed_agent_id") ? watch("fixed_agent_id") : "__none_agent"}
+                onValueChange={(value) => setValue("fixed_agent_id", value === "__none_agent" ? "" : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar agente..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none_agent" disabled>
+                    Selecionar agente...
+                  </SelectItem>
                   {agents.filter(agent => agent.id).map((agent) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.full_name} ({agent.role})
