@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,11 @@ import { MacrosManager } from "@/components/macros";
 import { CampaignsManager } from "@/components/campaigns";
 import { useAuth } from "@/contexts/AuthContext";
 const WhatsAppSettings = () => {
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  // eslint-disable-next-line no-console
+  console.debug("[WhatsAppSettings] render", { count: renderCountRef.current });
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const { isAdmin } = useAuth();
@@ -21,6 +26,8 @@ const WhatsAppSettings = () => {
 
   // Keep URL in sync if someone manually typed an invalid tab.
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.debug("[WhatsAppSettings] sync tab", { safeTab, currentTabParam, isAdmin });
     if (safeTab !== currentTabParam) {
       setSearchParams({ tab: safeTab }, { replace: true });
     }
