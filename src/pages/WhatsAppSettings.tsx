@@ -11,7 +11,7 @@ const WhatsAppSettings = () => {
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
   // eslint-disable-next-line no-console
-  console.debug("[WhatsAppSettings] render", { count: renderCountRef.current });
+  console.log("[WhatsAppSettings] render", { count: renderCountRef.current });
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -27,7 +27,7 @@ const WhatsAppSettings = () => {
   // Keep URL in sync if someone manually typed an invalid tab.
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.debug("[WhatsAppSettings] sync tab", { safeTab, currentTabParam, isAdmin });
+    console.log("[WhatsAppSettings] sync tab", { safeTab, currentTabParam, isAdmin });
     if (safeTab !== currentTabParam) {
       setSearchParams({ tab: safeTab }, { replace: true });
     }

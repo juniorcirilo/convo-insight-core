@@ -37,7 +37,7 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
   // eslint-disable-next-line no-console
-  console.debug("[CampaignDialog] render", {
+  console.log("[CampaignDialog] render", {
     count: renderCountRef.current,
     open,
     campaignId: campaign?.id ?? null,
@@ -76,7 +76,7 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
   const handleDialogOpenChange = useCallback(
     (nextOpen: boolean) => {
       // eslint-disable-next-line no-console
-      console.debug("[CampaignDialog] onOpenChange", { nextOpen, open });
+      console.log("[CampaignDialog] onOpenChange", { nextOpen, open });
       if (nextOpen === open) return;
       onOpenChange(nextOpen);
     },
@@ -113,7 +113,7 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
     prevOpenRef.current = open;
 
     // eslint-disable-next-line no-console
-    console.debug("[CampaignDialog] init effect", {
+    console.log("[CampaignDialog] init effect", {
       open,
       wasOpen,
       campaignId,

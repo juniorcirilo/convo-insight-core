@@ -23,7 +23,7 @@ export const CampaignsManager = () => {
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
   // eslint-disable-next-line no-console
-  console.debug("[CampaignsManager] render", { count: renderCountRef.current });
+  console.log("[CampaignsManager] render", { count: renderCountRef.current });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
