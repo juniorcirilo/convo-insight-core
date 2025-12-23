@@ -65,7 +65,7 @@ export const CampaignDetailsModal = ({ campaign, onClose, onEdit }: CampaignDeta
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
   // eslint-disable-next-line no-console
-  console.debug("[CampaignDetailsModal] render", { count: renderCountRef.current, open: !!campaign, id: campaign?.id });
+  console.log("[CampaignDetailsModal] render", { count: renderCountRef.current, open: !!campaign, id: campaign?.id });
 
   const [isStarting, setIsStarting] = useState(false);
   const { updateCampaign } = useCampaigns();
