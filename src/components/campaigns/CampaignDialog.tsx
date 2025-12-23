@@ -290,14 +290,14 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Instância</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma instância" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {instances?.map((instance) => (
+                        {instances?.filter(instance => instance.id).map((instance) => (
                           <SelectItem key={instance.id} value={instance.id}>
                             {instance.name}
                           </SelectItem>
