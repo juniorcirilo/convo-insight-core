@@ -199,7 +199,7 @@ const PermissionsMatrix = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os setores</SelectItem>
-                {sectors.map(sector => (
+                {sectors.filter(sector => sector.id).map(sector => (
                   <SelectItem key={sector.id} value={sector.id}>
                     {sector.name}
                   </SelectItem>
