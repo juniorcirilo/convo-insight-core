@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,20 @@ const WhatsAppSettings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const { isAdmin } = useAuth();
-  
-  const currentTab = searchParams.get('tab') || 'setup';
+
+  const allowedTabs = isAdmin
+    ? ["setup", "instances", "sectors", "macros", "assignment", "campaigns", "webhooks", "api", "team", "security"]
+    : ["setup", "instances", "sectors", "macros", "assignment"];
+
+  const currentTab = searchParams.get("tab") || "setup";
+
+  // Prevent invalid tab values causing Radix Tabs to thrash.
+  useEffect(() => {
+    if (!allowedTabs.includes(currentTab)) {
+      setSearchParams({ tab: "setup" }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, currentTab]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
