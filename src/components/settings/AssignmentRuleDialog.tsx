@@ -161,7 +161,8 @@ export function AssignmentRuleDialog({
           <div className="space-y-2">
             <Label htmlFor="instance">Instância</Label>
             <Select
-              value={watch("instance_id") || undefined}
+              key={`instance-${rule?.id || 'new'}`}
+              defaultValue={watch("instance_id") || undefined}
               onValueChange={(value) => setValue("instance_id", value)}
             >
               <SelectTrigger>
@@ -182,7 +183,8 @@ export function AssignmentRuleDialog({
             <div className="space-y-2">
               <Label htmlFor="sector">Setor (opcional)</Label>
               <Select
-                value={watch("sector_id") || "all_sectors"}
+                key={`sector-${rule?.id || 'new'}-${selectedInstanceId}`}
+                defaultValue={watch("sector_id") || "all_sectors"}
                 onValueChange={(value) => setValue("sector_id", value === "all_sectors" ? "" : value)}
               >
                 <SelectTrigger>
@@ -239,7 +241,8 @@ export function AssignmentRuleDialog({
             <div className="space-y-2">
               <Label htmlFor="agent">Agente</Label>
               <Select
-                value={watch("fixed_agent_id") || undefined}
+                key={`agent-${rule?.id || 'new'}-${selectedSectorId || selectedInstanceId}`}
+                defaultValue={watch("fixed_agent_id") || undefined}
                 onValueChange={(value) => setValue("fixed_agent_id", value)}
               >
                 <SelectTrigger>
