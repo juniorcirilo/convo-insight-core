@@ -93,13 +93,13 @@ const SectorPermissionsCard = () => {
       <CardContent className="space-y-6">
         {/* Sector selector */}
         <div className="flex items-center gap-4">
-          <Select value={selectedSectorId} onValueChange={setSelectedSectorId}>
+          <Select value={selectedSectorId || undefined} onValueChange={setSelectedSectorId}>
             <SelectTrigger className="w-[250px]">
               <Building2 className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Selecione um setor" />
             </SelectTrigger>
             <SelectContent>
-              {sectors.map(sector => (
+              {sectors.filter(sector => sector.id).map(sector => (
                 <SelectItem key={sector.id} value={sector.id}>
                   {sector.name}
                   {sector.is_default && (
