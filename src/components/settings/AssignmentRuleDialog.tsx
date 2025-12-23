@@ -161,14 +161,14 @@ export function AssignmentRuleDialog({
           <div className="space-y-2">
             <Label htmlFor="instance">Instância</Label>
             <Select
-              value={watch("instance_id")}
+              value={watch("instance_id") || undefined}
               onValueChange={(value) => setValue("instance_id", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar instância..." />
               </SelectTrigger>
               <SelectContent>
-                {instances.map((instance) => (
+                {instances.filter(instance => instance.id).map((instance) => (
                   <SelectItem key={instance.id} value={instance.id}>
                     {instance.name}
                   </SelectItem>
@@ -182,15 +182,15 @@ export function AssignmentRuleDialog({
             <div className="space-y-2">
               <Label htmlFor="sector">Setor (opcional)</Label>
               <Select
-                value={watch("sector_id")}
-                onValueChange={(value) => setValue("sector_id", value)}
+                value={watch("sector_id") || "all_sectors"}
+                onValueChange={(value) => setValue("sector_id", value === "all_sectors" ? "" : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os setores da instância..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os setores</SelectItem>
-                  {sectors.map((sector) => (
+                  <SelectItem value="all_sectors">Todos os setores</SelectItem>
+                  {sectors.filter(sector => sector.id).map((sector) => (
                     <SelectItem key={sector.id} value={sector.id}>
                       {sector.name} {sector.is_default && "(Padrão)"}
                     </SelectItem>
@@ -239,14 +239,14 @@ export function AssignmentRuleDialog({
             <div className="space-y-2">
               <Label htmlFor="agent">Agente</Label>
               <Select
-                value={watch("fixed_agent_id")}
+                value={watch("fixed_agent_id") || undefined}
                 onValueChange={(value) => setValue("fixed_agent_id", value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar agente..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {agents.map((agent) => (
+                  {agents.filter(agent => agent.id).map((agent) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.full_name} ({agent.role})
                     </SelectItem>
