@@ -60,13 +60,14 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
 
   const selectedInstanceId = form.watch("instance_id");
   const messageType = form.watch("message_type");
+  const campaignId = campaign?.id ?? null;
 
   // Fetch contacts for selected instance (only opt-in contacts)
   const { data: contacts, isLoading: contactsLoading } = useQuery({
     queryKey: ["campaign-contacts", selectedInstanceId, contactSearch],
     queryFn: async () => {
       if (!selectedInstanceId) return [];
-      
+
       let query = supabase
         .from("whatsapp_contacts")
         .select("id, name, phone_number, opt_in, is_group")
@@ -74,11 +75,11 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
         .eq("opt_in", true)
         .eq("is_group", false)
         .order("name");
-      
+
       if (contactSearch) {
         query = query.or(`name.ilike.%${contactSearch}%,phone_number.ilike.%${contactSearch}%`);
       }
-      
+
       const { data, error } = await query.limit(100);
       if (error) throw error;
       return data || [];
@@ -97,7 +98,7 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
         scheduled_at: campaign.scheduled_at || "",
       });
       setSelectedContacts((campaign.target_contacts as string[]) || []);
-      // Handle existing media - campaign may have media_url from database
+
       const mediaUrl = (campaign as any).media_url;
       if (mediaUrl) {
         setExistingMediaUrl(mediaUrl);
@@ -117,9 +118,8 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
       setMediaPreview(null);
       setExistingMediaUrl(null);
     }
-    // Only re-run when dialog opens/closes or campaign changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaign, open]);
+  }, [campaignId, open]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
