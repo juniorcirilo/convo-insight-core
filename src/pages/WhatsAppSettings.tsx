@@ -16,15 +16,16 @@ const WhatsAppSettings = () => {
     ? ["setup", "instances", "sectors", "macros", "assignment", "campaigns", "webhooks", "api", "team", "security"]
     : ["setup", "instances", "sectors", "macros", "assignment"];
 
-  const currentTab = searchParams.get("tab") || "setup";
+  const currentTabParam = searchParams.get("tab") || "setup";
+  const safeTab = allowedTabs.includes(currentTabParam) ? currentTabParam : "setup";
 
-  // Prevent invalid tab values causing Radix Tabs to thrash.
+  // Keep URL in sync if someone manually typed an invalid tab.
   useEffect(() => {
-    if (!allowedTabs.includes(currentTab)) {
-      setSearchParams({ tab: "setup" }, { replace: true });
+    if (safeTab !== currentTabParam) {
+      setSearchParams({ tab: safeTab }, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, currentTab]);
+  }, [isAdmin, safeTab, currentTabParam]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
@@ -64,7 +65,7 @@ const WhatsAppSettings = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+        <Tabs value={safeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="setup">Setup</TabsTrigger>
             <TabsTrigger value="instances">Instâncias</TabsTrigger>
