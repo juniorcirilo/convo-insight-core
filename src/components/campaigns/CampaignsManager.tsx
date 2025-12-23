@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Plus, Send, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,11 +20,6 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; var
 };
 
 export const CampaignsManager = () => {
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  // eslint-disable-next-line no-console
-  console.log("[CampaignsManager] render", { count: renderCountRef.current });
-
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -140,18 +135,20 @@ export const CampaignsManager = () => {
         </div>
       )}
 
-      {(showCreateDialog || !!editingCampaign) && (
-        <CampaignDialog
-          open={showCreateDialog || !!editingCampaign}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowCreateDialog(false);
-              setEditingCampaign(null);
-            }
-          }}
-          campaign={editingCampaign}
-        />
-      )}
+      <CampaignDialog
+        open={showCreateDialog || !!editingCampaign}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            // Opening via Dialog interactions (e.g., trigger) should open create mode.
+            setShowCreateDialog(true);
+            return;
+          }
+          // Closing
+          setShowCreateDialog(false);
+          setEditingCampaign(null);
+        }}
+        campaign={editingCampaign}
+      />
 
       {!!selectedCampaign && (
         <CampaignDetailsModal

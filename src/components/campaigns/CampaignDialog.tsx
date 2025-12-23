@@ -34,15 +34,6 @@ interface CampaignDialogProps {
 }
 
 export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogProps) => {
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  // eslint-disable-next-line no-console
-  console.log("[CampaignDialog] render", {
-    count: renderCountRef.current,
-    open,
-    campaignId: campaign?.id ?? null,
-  });
-
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [contactSearch, setContactSearch] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -75,8 +66,6 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
 
   const handleDialogOpenChange = useCallback(
     (nextOpen: boolean) => {
-      // eslint-disable-next-line no-console
-      console.log("[CampaignDialog] onOpenChange", { nextOpen, open });
       if (nextOpen === open) return;
       onOpenChange(nextOpen);
     },
@@ -111,14 +100,6 @@ export const CampaignDialog = ({ open, onOpenChange, campaign }: CampaignDialogP
   useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = open;
-
-    // eslint-disable-next-line no-console
-    console.log("[CampaignDialog] init effect", {
-      open,
-      wasOpen,
-      campaignId,
-      lastInitId: lastInitIdRef.current,
-    });
 
     // Only (re)initialize when opening OR when switching campaign while open
     if (!open) return;

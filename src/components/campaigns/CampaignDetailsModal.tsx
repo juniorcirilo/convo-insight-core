@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,11 +62,6 @@ const logStatusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export const CampaignDetailsModal = ({ campaign, onClose, onEdit }: CampaignDetailsModalProps) => {
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  // eslint-disable-next-line no-console
-  console.log("[CampaignDetailsModal] render", { count: renderCountRef.current, open: !!campaign, id: campaign?.id });
-
   const [isStarting, setIsStarting] = useState(false);
   const { updateCampaign } = useCampaigns();
   const { toast } = useToast();
