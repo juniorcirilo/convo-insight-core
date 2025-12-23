@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
@@ -165,8 +165,8 @@ const getPhaseColor = (phase: string) => {
   }
 };
 
-export const InstanceSetupCollapsible = ({ 
-  onOpenAddDialog 
+export const InstanceSetupCollapsible = ({
+  onOpenAddDialog,
 }: InstanceSetupCollapsibleProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<number[]>(() => {
@@ -180,6 +180,10 @@ export const InstanceSetupCollapsible = ({
   const { toast } = useToast();
   const { instances, isLoading: isLoadingInstances } = useWhatsAppInstances();
 
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setIsOpen((prev) => (prev === nextOpen ? prev : nextOpen));
+  }, []);
+
   // Persistir progresso no localStorage
   useEffect(() => {
     localStorage.setItem('whatsapp-onboarding-progress', JSON.stringify(completedSteps));
@@ -188,7 +192,7 @@ export const InstanceSetupCollapsible = ({
   // Abrir automaticamente se não houver instâncias e o checklist não estiver completo
   useEffect(() => {
     if (!isLoadingInstances && instances.length === 0 && completedSteps.length < onboardingSteps.length) {
-      setIsOpen(true);
+      setIsOpen((prev) => (prev ? prev : true));
     }
   }, [isLoadingInstances, instances.length, completedSteps.length]);
 
@@ -246,7 +250,7 @@ export const InstanceSetupCollapsible = ({
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <CollapsibleTrigger asChild>
         <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground justify-between h-12">
           <div className="flex items-center gap-2">
