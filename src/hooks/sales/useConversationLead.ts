@@ -127,13 +127,45 @@ export const useConversationLead = (conversationId: string | null) => {
     },
   });
 
+  const updateLeadValue = useMutation({
+    mutationFn: async ({ leadId, value }: { leadId: string; value: number }) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .update({ value })
+        .eq('id', leadId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversation-lead', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({
+        title: "Valor atualizado",
+        description: "O valor da oportunidade foi atualizado.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating lead value:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o valor.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     lead,
     isLoading,
     error,
     createLead: createLead.mutate,
     updateLeadStatus: updateLeadStatus.mutate,
+    updateLeadValue: updateLeadValue.mutate,
     isCreating: createLead.isPending,
     isUpdating: updateLeadStatus.isPending,
+    isUpdatingValue: updateLeadValue.isPending,
   };
 };

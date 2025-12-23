@@ -1,4 +1,6 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -6,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Lead, LeadStatus, useLeads } from '@/hooks/sales/useLeads';
 import { useLeadStatusHistory } from '@/hooks/sales/useLeadStatusHistory';
+import { EditLeadModal } from './EditLeadModal';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Building2, 
   Phone, 
@@ -17,7 +21,8 @@ import {
   MessageSquare,
   History,
   Edit,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,10 +44,13 @@ const statusLabels: Record<LeadStatus, { label: string; color: string }> = {
 };
 
 export const LeadDetailModal = ({ lead, open, onClose }: LeadDetailModalProps) => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { history, isLoading: historyLoading } = useLeadStatusHistory(lead?.id);
   const { deleteLead } = useLeads();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  if (!lead) return null;
+  if (!lead || !open) return null;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -58,32 +66,61 @@ export const LeadDetailModal = ({ lead, open, onClose }: LeadDetailModalProps) =
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl">{lead.name}</DialogTitle>
-                {lead.company && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Building2 className="w-3 h-3" />
-                    {lead.company}
-                  </p>
-                )}
-              </div>
+  const handleNavigateToConversation = () => {
+    if (lead.conversation_id) {
+      onClose();
+      navigate(`/whatsapp?conversation=${lead.conversation_id}`);
+    } else {
+      toast({
+        title: "Sem conversa vinculada",
+        description: "Este lead não possui uma conversa do WhatsApp vinculada.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenEdit = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const modalContent = (
+    <div 
+      className="fixed inset-0 z-[9998] flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div 
+        className="relative bg-background border rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+              <User className="w-6 h-6 text-primary" />
             </div>
+            <div>
+              <h2 className="text-xl font-semibold">{lead.name}</h2>
+              {lead.company && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Building2 className="w-3 h-3" />
+                  {lead.company}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <Badge className={statusLabels[lead.status].color}>
               {statusLabels[lead.status].label}
             </Badge>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        </DialogHeader>
+        </div>
 
-        <Tabs defaultValue="details" className="mt-4">
+        {/* Content */}
+        <Tabs defaultValue="details" className="p-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Detalhes</TabsTrigger>
             <TabsTrigger value="notes">Notas</TabsTrigger>
@@ -169,11 +206,11 @@ export const LeadDetailModal = ({ lead, open, onClose }: LeadDetailModalProps) =
 
             {/* Actions */}
             <div className="flex gap-2 pt-4 border-t">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleOpenEdit}>
                 <Edit className="w-4 h-4 mr-2" />
                 Editar
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleNavigateToConversation}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Conversa
               </Button>
@@ -259,7 +296,16 @@ export const LeadDetailModal = ({ lead, open, onClose }: LeadDetailModalProps) =
             </ScrollArea>
           </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+      </div>
+      
+      {/* Edit Modal */}
+      <EditLeadModal
+        lead={lead}
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
+    </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

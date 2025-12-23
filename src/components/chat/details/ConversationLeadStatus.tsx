@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Plus, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { TrendingUp, Plus, Loader2, Check, X, Pencil } from 'lucide-react';
 
 interface ConversationLeadStatusProps {
   conversationId: string;
@@ -33,8 +34,19 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function ConversationLeadStatus({ conversationId }: ConversationLeadStatusProps) {
-  const { lead, isLoading, createLead, updateLeadStatus, isCreating, isUpdating } = useConversationLead(conversationId);
-  const [isEditing, setIsEditing] = useState(false);
+  const { 
+    lead, 
+    isLoading, 
+    createLead, 
+    updateLeadStatus, 
+    updateLeadValue,
+    isCreating, 
+    isUpdating,
+    isUpdatingValue 
+  } = useConversationLead(conversationId);
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [isEditingValue, setIsEditingValue] = useState(false);
+  const [valueInput, setValueInput] = useState('');
 
   // Fetch conversation details to get contact info
   const { data: conversation } = useQuery({
@@ -73,7 +85,35 @@ export function ConversationLeadStatus({ conversationId }: ConversationLeadStatu
       leadId: lead.id,
       status: newStatus as any,
     });
-    setIsEditing(false);
+    setIsEditingStatus(false);
+  };
+
+  const handleStartEditValue = () => {
+    if (!lead) return;
+    setValueInput(String(lead.value || 0));
+    setIsEditingValue(true);
+  };
+
+  const handleSaveValue = () => {
+    if (!lead) return;
+    const numericValue = parseFloat(valueInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    updateLeadValue({
+      leadId: lead.id,
+      value: numericValue,
+    });
+    setIsEditingValue(false);
+  };
+
+  const handleCancelEditValue = () => {
+    setIsEditingValue(false);
+    setValueInput('');
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
   };
 
   if (isLoading) {
@@ -128,9 +168,10 @@ export function ConversationLeadStatus({ conversationId }: ConversationLeadStatu
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 space-y-3">
+        {/* Status */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Status:</span>
-          {isEditing ? (
+          {isEditingStatus ? (
             <Select 
               value={lead.status} 
               onValueChange={handleStatusChange}
@@ -151,7 +192,7 @@ export function ConversationLeadStatus({ conversationId }: ConversationLeadStatu
             <Badge 
               variant="outline" 
               className={`cursor-pointer ${STATUS_COLORS[lead.status]}`}
-              onClick={() => setIsEditing(true)}
+              onClick={() => setIsEditingStatus(true)}
             >
               {isUpdating ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -161,20 +202,56 @@ export function ConversationLeadStatus({ conversationId }: ConversationLeadStatu
           )}
         </div>
 
-        {lead.value && lead.value > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Valor:</span>
-            <span className="text-sm font-medium">
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              }).format(Number(lead.value))}
-            </span>
-          </div>
-        )}
+        {/* Valor - sempre exibido */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Valor:</span>
+          {isEditingValue ? (
+            <div className="flex items-center gap-1">
+              <Input
+                type="text"
+                value={valueInput}
+                onChange={(e) => setValueInput(e.target.value)}
+                className="w-24 h-8 text-sm"
+                placeholder="0,00"
+                autoFocus
+              />
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-8 w-8"
+                onClick={handleSaveValue}
+                disabled={isUpdatingValue}
+              >
+                {isUpdatingValue ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3 text-green-500" />
+                )}
+              </Button>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-8 w-8"
+                onClick={handleCancelEditValue}
+              >
+                <X className="h-3 w-3 text-red-500" />
+              </Button>
+            </div>
+          ) : (
+            <div 
+              className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mr-2"
+              onClick={handleStartEditValue}
+            >
+              <span className="text-sm font-medium">
+                {formatCurrency(Number(lead.value) || 0)}
+              </span>
+              <Pencil className="h-3 w-3 text-muted-foreground" />
+            </div>
+          )}
+        </div>
 
         <p className="text-xs text-muted-foreground">
-          Clique no status para alterar
+          Clique no status ou valor para alterar
         </p>
       </CardContent>
     </Card>
